@@ -1,0 +1,53 @@
+- name: Launch a handbrake worker node
+  hosts: localhost
+  tasks:
+    - name: Launch an instance
+      os_server:
+        name: "{{ worker_name }}"
+        state: present
+        image: "{{ image }}"
+        flavor: "{{ flavor_id }}"
+        key_name: "{{ key_name }}"
+        wait: yes
+      register: worker
+    - name: Wait for OS to boot
+      pause:
+          seconds: 30
+    - add_host: name={{ worker_name }} groups=workers
+                ansible_ssh_host={{ worker.server.private_v4 }}
+                ansible_user={{ remote_user }}
+
+- hosts: workers
+  sudo: yes
+  gather_facts: no
+  pre_tasks:
+    - name: 'install python2'
+      raw: sudo apt-get -y install python-simplejson
+        
+- name: Configure worker nodes
+  hosts: workers
+  sudo: yes
+  tasks:
+    - name: Install nfs client
+      apt:
+        name: nfs-common
+        update_cache: yes
+        state: latest
+        install_recommends: yes
+    - name: Create mount point
+      file:
+        path: /data1
+        state: directory
+    - name: Mount working partition
+      mount: 
+        path: /data1
+        src: lukara:/data1
+        fstype: nfs4
+        opts: rsize=32768,wsize=32768,timeo=14,intr
+        state: present
+    - name: Install Handbrake
+      apt:
+        name: handbrake-cli
+        update_cache: yes
+        state: latest
+        install_recommends: yes

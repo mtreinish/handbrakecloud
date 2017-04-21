@@ -12,7 +12,6 @@
 
 import logging
 import os
-import queue
 import threading
 import time
 
@@ -27,6 +26,7 @@ LOG = logging.getLogger(__name__)
 
 class JobManager(threading.Thread):
     def __init__(self, global_config, poll_interval=10):
+        super(JobManager, self).__init__()
         self.queue = queue.Queue()
         self.global_config = global_config
         self.poll_interval = poll_interval

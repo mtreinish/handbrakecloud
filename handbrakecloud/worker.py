@@ -13,8 +13,7 @@
 import datetime
 import os
 
-from ansible import playbook
-
+from handbrakecloud import runner
 from handbrakecloud import utils
 
 
@@ -56,8 +55,8 @@ class Worker(object):
             'key_name': self.key_name,
             'remote_user': self.remote_user,
         }
-        playbook.Playbook(playbook=get_deploy_worker_playbook(),
-                          extra_vars=extra_vars)
+        runner.run_playbook(get_deploy_worker_playbook(),
+                            extra_vars=extra_vars)
         self.start_time = datetime.datetime.utcnow()
 
     def run_handbrake(self, job, worker_lock):
@@ -72,8 +71,8 @@ class Worker(object):
             'command': command,
             'server': self.name,
         }
-        playbook.Playbook(playbook=get_run_handbrake_playbook(),
-                          extra_vars=extra_vars)
+        runner.run_playbook(get_run_handbrake_playbook(),
+                            extra_vars=extra_vars)
         worker_lock.acquire()
         self.idle_queue.put(self.active_list[self.name].pop())
         worker_lock.release()
@@ -88,5 +87,5 @@ class Worker(object):
         extra_vars = {
             'server': self.name,
         }
-        playbook.Playbook(playbook=get_delete_worker_playbook(),
-                          extra_vars=extra_vars)
+        runner.run_playbook(playbook=get_delete_worker_playbook(),
+                            extra_vars=extra_vars)

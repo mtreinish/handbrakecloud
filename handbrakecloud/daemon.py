@@ -71,6 +71,9 @@ def main():
         print("The specified config file %s is not valid because: %s" % (
             config_path, exc))
         exit(1)
+    if 'log_path' not in global_config:
+        LOG.addHandler(logging.StreamHandler())
+    logging.basicConfig(filename=global_config.get('log_path'))
 
     max_workers = global_config.get('max_workers', 0)
     idle_worker_queue = queue.Queue(maxsize=max_workers)

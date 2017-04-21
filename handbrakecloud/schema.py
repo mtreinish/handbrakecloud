@@ -14,30 +14,30 @@ import voluptuous as vol
 
 
 profile_schema = vol.Schema({
-        'audio': {
-            'encoder': str,
-            'tracks': [int],
-        },
-        'video':{
-            'encoder': str,
-            'encoder_preset': str,
-            'quality': int,
-        },
-        'subtitle': {
-            'tracks': [int],
-        },
-        'filters': {
-            str: bool,
-        },
-        'chapters': bool,
-        'title': int,
+    'audio': {
+        'encoder': str,
+        'tracks': [int],
+    },
+    'video': {
+        'encoder': str,
+        'encoder_preset': str,
+        'quality': int,
+    },
+    'subtitle': {
+        'tracks': [int],
+    },
+    'filters': {
+        str: bool,
+    },
 })
 
 
 job_schema = vol.Schema([{
     vol.Required('source'): vol.PathExists,
     vol.Required('output'): vol.PathExists,
-    vol.Optional('profile'): profile_schema
+    vol.Optional('profile'): profile_schema,
+    vol.Optional('chapters'): bool,
+    vol.Optional('title'): int,
 }])
 
 global_config = vol.Schema({
@@ -50,8 +50,8 @@ global_config = vol.Schema({
         'key_name': str,
         'image_name': str,
         'remote_user': str,
-    }
+    },
     vol.Optional('worker_name_prefix'): str,
     vol.Optional('log_path'): vol.PathExists,
-    vol.Optional('job_poll_interval'), int,
+    vol.Optional('job_poll_interval'): int,
 })

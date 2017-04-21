@@ -1,0 +1,10 @@
+- name: Delete a worker
+  hosts: localhost
+  connection: local
+  gather_facts: False
+  tasks:
+    - name: Delete Server
+      os_server:
+          name: {{ name }}
+          state: absent
+    - meta: refresh_invetory

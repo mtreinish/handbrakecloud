@@ -14,10 +14,13 @@ import logging
 import os
 import queue
 import threading
+import time
 
 from six.moves import queue
 import voluptuous
 import yaml
+
+from handbrakecloud import schema
 
 LOG = logging.getLogger(__name__)
 
@@ -28,25 +31,26 @@ class JobManager(threading.Thread):
         self.global_config = global_config
         self.poll_interval = poll_interval
         self.job_file_dir = global_config['job_file_dir']
-        
 
     def find_jobs(self):
-        jobs = []
         for file_name in os.listdir(self.job_file_dir):
             path = os.path.join(self.job_file_dir, file_name)
-            if not file_name.endswith('.yaml')
+            if not file_name.endswith('.yaml'):
                 LOG.warning('Non yaml file found in job dir %s' % path)
                 continue
             else:
                 with open(path, 'r') as fd:
                     job = yaml.load(fd.read())
                     try:
-                        job_schema(job)
+                        schema.job_schema(job)
                     except voluptuous.MultipleInvalid as exc:
                         LOG.warning("Job file %s isn't a valid job yaml file "
-                                    "because: %s" % (path, exc)
+                                    "because: %s" % (path, exc))
+                        continue
+                    self.queue.put(job)
+                    os.remove(path)
 
     def run(self):
         while True:
-            find_jobs()
-            sleep(self.poll_interval)
+            self.find_jobs()
+            time.sleep(self.poll_interval)

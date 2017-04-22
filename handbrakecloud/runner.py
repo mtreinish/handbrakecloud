@@ -61,7 +61,7 @@ def run_playbook(playbook, extra_vars):
 def run_playbook_subprocess(playbook, extra_vars):
     extra_vars_string = ""
     for var in extra_vars:
-        extra_vars_string += "%s=%s " % (var, extra_vars[var])
+        extra_vars_string += "%s='%s' " % (var, extra_vars[var])
     extra_vars_string = extra_vars_string.rstrip()
     cmd = ['ansible-playbook', playbook, '--extra-vars', extra_vars_string]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,

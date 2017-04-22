@@ -11,4 +11,4 @@
 - hosts: workers
   tasks:
     - name: Run Handbrake
-      raw: "{{ command }}"
+      command: "{{ command }}"

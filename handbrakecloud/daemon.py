@@ -49,7 +49,7 @@ def deploy_new_worker(new_worker, idle_worker_queue):
         # Launch worker delete in spare thread to not block on failure
         threading.Thread(target=new_worker.delete_worker)
         return
-    LOG.info("Launched new worker %s" % worker_name)
+    LOG.info("Launched new worker %s" % new_worker.name)
     idle_worker_queue.put(new_worker)
 
 
@@ -57,6 +57,7 @@ def process_job(job, idle_worker_queue, active_worker_list, global_config):
     global active_worker_lock
     global worker_count_lock
     global worker_builds
+    LOG.info("Processing job with output file %s" % job[0].get('output'))
     if idle_worker_queue.qsize() == 0:
         max_workers = global_config.get('max_workers', 0)
         new_worker = None
@@ -111,7 +112,7 @@ def process_job(job, idle_worker_queue, active_worker_list, global_config):
     active_worker.run_handbrake(job, active_worker_lock)
     duration = datetime.datetime.utcnow() - start
     LOG.info('Finished transcoding job with output file %s in %s seconds'
-             % (job.get('output'), duration.total_seconds()))
+             % (job[0].get('output'), duration.total_seconds()))
 
 
 def main():

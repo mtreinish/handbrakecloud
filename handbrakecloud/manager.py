@@ -48,6 +48,8 @@ class JobManager(threading.Thread):
                                     "because: %s" % (path, exc))
                         continue
                     self.queue.put(job)
+                    LOG.info("Queued up job with output file %s" %
+                             job[0]['output'])
                     os.remove(path)
 
     def run(self):

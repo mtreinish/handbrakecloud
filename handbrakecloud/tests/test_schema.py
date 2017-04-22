@@ -31,4 +31,3 @@ class TestSchema(base.TestCase):
             'output': '/tmp/output'
         }]
         schema.job_schema(job)
-

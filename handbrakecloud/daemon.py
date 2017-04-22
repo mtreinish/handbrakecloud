@@ -12,7 +12,6 @@
 
 import logging
 import os
-import random
 import sys
 import threading
 
@@ -28,26 +27,54 @@ LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
 
 active_worker_lock = threading.Semaphore()
+worker_builds = {}
+worker_count_lock = threading.Semaphore()
 
 
 def deploy_new_worker(new_worker, idle_worker_queue):
-    new_worker.deploy_worker()
+    try:
+        new_worker.deploy_worker()
+    except Exception:
+        # If worker launch failed don't add it to the queue. The job
+        # will just wait for the next idle node
+        LOG.error('Worker: %s deploy failed' % new_worker.name)
+        LOG.debug("deploy_new_worker() acquired the worker_count semaphore to "
+                  "remove the failed deploy from the worker counts.")
+        worker_count_lock.acquire()
+        worker_builds.pop(new_worker.name)
+        worker_count_lock.release()
+        LOG.debug("deploy_new_worker() released the worker_count semaphore "
+                  "after remove the failed deploy from the worker counts.")
+        # Launch worker delete in spare thread to not block on failure
+        threading.Thread(target=new_worker.delete_worker)
+        return
     idle_worker_queue.put(new_worker)
 
 
 def process_job(job, idle_worker_queue, active_worker_list, global_config):
     global active_worker_lock
+    global worker_count_lock
+    global worker_builds
     if idle_worker_queue.qsize() == 0:
         max_workers = global_config.get('max_workers', 0)
         new_worker = None
-        active_worker_lock.acquire()
-        LOG.debug("process_job() acquired the active_list semaphore to check "
-                  "active worker counts.")
-        if max_workers == 0 or len(active_worker_list) <= max_workers:
-            worker_num = len(active_worker_list) + 1
+        worker_count_lock.acquire()
+        LOG.debug("process_job() acquired the worker_count semaphore to check "
+                  "worker counts.")
+        if max_workers == 0 or (len(worker_builds) < max_workers):
+            worker_count = len(worker_builds)
             base_name = global_config.get('worker_name_prefix',
                                           'handbrakecloud-worker')
-            worker_name = base_name + '-' + str(worker_num)
+            worker_name = base_name + '-' + str(worker_count)
+            # Handle failed deploys by incrementing the count until we find
+            # an unused id
+            if worker_name in worker_builds:
+                while worker_name not in worker_builds:
+                    worker_count += 1
+                    base_name = global_config.get('worker_name_prefix',
+                                                  'handbrakecloud-worker')
+                    worker_name = base_name + '-' + str(worker_count)
+
             new_worker = worker.Worker(
                 idle_worker_queue,
                 active_worker_list,
@@ -56,7 +83,8 @@ def process_job(job, idle_worker_queue, active_worker_list, global_config):
                 global_config['cloud']['key_name'],
                 global_config['cloud']['remote_user'],
                 global_config)
-        active_worker_lock.release()
+            worker_builds[worker_name] = new_worker
+        worker_count_lock.release()
         LOG.debug("process_job() released the active_list semaphore after "
                   "checking the active worker counts.")
         if new_worker:
@@ -78,8 +106,7 @@ def process_job(job, idle_worker_queue, active_worker_list, global_config):
     LOG.debug("Worker %s released semaphore active_list in "
               "run_handbrake() after marking itself "
               "active" % active_worker.name)
-    threading.Thread(target=active_worker.run_handbrake,
-                     args=(job, active_worker_lock)).start()
+    active_worker.run_handbrake(job, active_worker_lock)
 
 
 def main():
@@ -111,7 +138,9 @@ def main():
 
     while True:
         job = job_manager.queue.get()
-        process_job(job, idle_worker_queue, active_worker_list, global_config)
+        threading.Thread(target=process_job,
+                         args=(job, idle_worker_queue, active_worker_list,
+                               global_config)).start()
         job_manager.queue.task_done()
 
 if __name__ == "__main__":

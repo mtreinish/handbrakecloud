@@ -11,7 +11,6 @@
 # under the License.
 
 import logging
-import os
 import subprocess
 
 from ansible.executor import playbook_executor
@@ -19,6 +18,8 @@ from ansible import inventory as ansible_inv
 from ansible.parsing import dataloader
 from ansible import vars as variables
 from collections import namedtuple
+
+from handbrakecloud import exceptions
 
 LOG = logging.getLogger(__name__)
 
@@ -57,6 +58,12 @@ def run_playbook(playbook, extra_vars):
     executor.run()
 
 
+def handle_error(stdout, stderr, return_code):
+    instance_error_msg = '"msg": "Error in creating instance'
+    if instance_error_msg in stdout:
+        raise exceptions.InstanceCreateException()
+
+
 # Only using this until I can figure out the ansible python API
 def run_playbook_subprocess(playbook, extra_vars):
     extra_vars_string = ""
@@ -68,5 +75,7 @@ def run_playbook_subprocess(playbook, extra_vars):
                             stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
     if proc.returncode > 0:
+        handle_error(stdout, stderr, proc.returncode)
         LOG.error("Playbook %s failed with:\n\tstderr:\n\t\t%s"
                   "\n\tstdout:\n\t\t%s" % (playbook, stderr, stdout))
+        raise exceptions.PlaybookFailure

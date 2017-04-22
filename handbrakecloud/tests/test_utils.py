@@ -14,6 +14,7 @@
 from handbrakecloud.tests import base
 from handbrakecloud import utils
 
+
 class TestUtils(base.TestCase):
     def test_get_profile_args_with_split_global_and_local(self):
         local_profile = {

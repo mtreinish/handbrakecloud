@@ -1,4 +1,14 @@
-- hosts: "{{ server }}"
+- hosts: localhost
+  tasks:
+    - os_server_facts:
+        server: "{{ worker_name }}"
+        wait: yes
+      register: worker
+    - add_host: name={{ worker_name }} groups=workers
+                ansible_ssh_host={{ openstack_servers[0]['private_v4'] }}
+                ansible_user={{ user }}
+
+- hosts: workers
   tasks:
     - name: Run Handbrake
       raw: "{{ command }}"

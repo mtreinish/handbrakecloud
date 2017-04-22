@@ -77,11 +77,11 @@ class Worker(object):
         command = utils.generate_command(job, self.global_config)
         extra_vars = {
             'command': command,
-            'server': self.name,
+            'worker_name': self.name,
+            'user': self.remote_user,
         }
         runner.run_playbook_subprocess(get_run_handbrake_playbook(),
-                                       extra_vars=extra_vars,
-                                       openstack_inventory=True)
+                                       extra_vars=extra_vars)
         worker_lock.acquire()
         LOG.debug("Worker: %s acquired active_list semaphore in "
                   "run_handbrake() to mark itself as idle" % self.name)
@@ -101,5 +101,4 @@ class Worker(object):
             'server': self.name,
         }
         runner.run_playbook_subprocess(playbook=get_delete_worker_playbook(),
-                                       extra_vars=extra_vars,
-                                       openstack_inventory=True)
+                                       extra_vars=extra_vars)

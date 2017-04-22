@@ -58,7 +58,7 @@ def run_playbook(playbook, extra_vars):
 
 
 # Only using this until I can figure out the ansible python API
-def run_playbook_subprocess(playbook, extra_vars, openstack_inventory=False):
+def run_playbook_subprocess(playbook, extra_vars):
     extra_vars_string = ""
     for var in extra_vars:
         extra_vars_string += "%s=%s " % (var, extra_vars[var])

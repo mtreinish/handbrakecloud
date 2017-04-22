@@ -23,19 +23,19 @@ LOG = logging.getLogger(__name__)
 def get_deploy_worker_playbook():
     file_path = os.path.abspath(__file__)
     playbooks_dir = os.path.join(os.path.dirname(file_path), 'playbooks')
-    return os.path.join(os.path.join(playbooks_dir, 'deploy_node.yaml'))
+    return os.path.join(playbooks_dir, 'deploy_node.yaml')
 
 
 def get_run_handbrake_playbook():
     file_path = os.path.abspath(__file__)
     playbooks_dir = os.path.join(os.path.dirname(file_path), 'playbooks')
-    return os.path.join(os.path.join(playbooks_dir, 'run_handbrake.yaml'))
+    return os.path.join(playbooks_dir, 'run_handbrake.yaml')
 
 
 def get_delete_worker_playbook():
     file_path = os.path.abspath(__file__)
     playbooks_dir = os.path.join(os.path.dirname(file_path), 'playbooks')
-    return os.path.join(os.path.join(playbooks_dir, 'delete_worker.yaml'))
+    return os.path.join(playbooks_dir, 'delete_worker.yaml')
 
 
 class Worker(object):
@@ -80,11 +80,12 @@ class Worker(object):
             'server': self.name,
         }
         runner.run_playbook_subprocess(get_run_handbrake_playbook(),
-                                       extra_vars=extra_vars)
+                                       extra_vars=extra_vars,
+                                       openstack_inventory=True)
         worker_lock.acquire()
         LOG.debug("Worker: %s acquired active_list semaphore in "
                   "run_handbrake() to mark itself as idle" % self.name)
-        self.idle_queue.put(self.active_list[self.name].pop())
+        self.idle_queue.put(self.active_list.pop(self.name))
         worker_lock.release()
         LOG.debug("Worker: %s released active_list semaphore in "
                   "run_handbrake() after marking itself as idle" % self.name)
@@ -100,4 +101,5 @@ class Worker(object):
             'server': self.name,
         }
         runner.run_playbook_subprocess(playbook=get_delete_worker_playbook(),
-                                       extra_vars=extra_vars)
+                                       extra_vars=extra_vars,
+                                       openstack_inventory=True)

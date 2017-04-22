@@ -16,3 +16,4 @@ build
 cover/
 etc/*.conf
 releasenotes/build
+handbrakecloud/playbooks/*.retry

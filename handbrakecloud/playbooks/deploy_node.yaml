@@ -44,7 +44,7 @@
         src: lukara:/data1
         fstype: nfs4
         opts: rsize=32768,wsize=32768,timeo=14,intr
-        state: present
+        state: mounted
     - name: Install Handbrake
       apt:
         name: handbrake-cli

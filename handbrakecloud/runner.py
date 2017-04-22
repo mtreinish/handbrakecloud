@@ -10,11 +10,16 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import logging
+import subprocess
+
 from ansible.executor import playbook_executor
 from ansible import inventory as ansible_inv
 from ansible.parsing import dataloader
 from ansible import vars as variables
 from collections import namedtuple
+
+LOG = logging.getLogger(__name__)
 
 
 OPTIONS = namedtuple('Options',
@@ -49,3 +54,18 @@ def run_playbook(playbook, extra_vars):
         options=options,
         passwords=None)
     executor.run()
+
+
+# Only using this until I can figure out the ansible python API
+def run_playbook_subprocess(playbook, extra_vars):
+    extra_vars_string = ""
+    for var in extra_vars:
+        extra_vars_string += "%s=%s " % (var, extra_vars[var])
+    extra_vars_string = extra_vars_string.rstrip()
+    cmd = ['ansible-playbook', playbook, '--extra-vars', extra_vars_string]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
+    stdout, stderr = proc.communicate()
+    if proc.returncode > 0:
+        LOG.error("Playbook %s failed with:\n\tstderr:\n\t\t%s"
+                  "\n\tstdout:\n\t\t%s" % (playbook, stderr, stdout))

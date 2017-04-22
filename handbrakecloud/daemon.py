@@ -12,6 +12,7 @@
 
 import logging
 import os
+import random
 import sys
 import threading
 
@@ -26,19 +27,27 @@ from handbrakecloud import worker
 LOG = logging.getLogger(__name__)
 
 
+active_worker_lock = threading.Semaphore()
+
+
 def deploy_new_worker(new_worker, idle_worker_queue):
     new_worker.deploy_worker()
     idle_worker_queue.put(new_worker)
 
 
 def process_job(job, idle_worker_queue, active_worker_list, global_config):
-    active_worker_lock = threading.Semaphore()
+    global active_worker_lock
     if idle_worker_queue.qsize() == 0:
         max_workers = global_config.get('max_workers', 0)
         new_worker = None
         active_worker_lock.acquire()
+        LOG.debug("process_job() acquired the active_list semaphore to check "
+                  "active worker counts.")
         if max_workers == 0 or len(active_worker_list) < max_workers:
-            worker_num = len(active_worker_list) + 1
+            max_num = max_workers
+            if max_num == 0:
+                max_num = sys.maxint
+            worker_num = random.randint(0, max_num)
             base_name = global_config.get('worker_name_prefix',
                                           'handbrakecloud-worker')
             worker_name = base_name + '-' + str(worker_num)
@@ -48,14 +57,16 @@ def process_job(job, idle_worker_queue, active_worker_list, global_config):
                 worker_name, global_config['cloud']['flavor'],
                 global_config['cloud']['image_name'],
                 global_config['cloud']['key_name'],
-                global_config['cloud']['remote_user'])
+                global_config['cloud']['remote_user'],
+                global_config)
         active_worker_lock.release()
+        LOG.debug("process_job() released the active_list semaphore after "
+                  "checking the active worker counts.")
         if new_worker:
-            threading.Thread(target=deploy_new_worker,
-                             args=(new_worker, idle_worker_queue)).start()
+            deploy_new_worker(new_worker, idle_worker_queue)
     active_worker = idle_worker_queue.get()
     threading.Thread(target=active_worker.run_handbrake,
-                     args=(job, active_worker_lock))
+                     args=(job, active_worker_lock)).start()
 
 
 def main():
@@ -87,7 +98,7 @@ def main():
     while True:
         job = job_manager.queue.get()
         process_job(job, idle_worker_queue, active_worker_list, global_config)
-        job.task_done()
+        job_manager.queue.task_done()
 
 if __name__ == "__main__":
     main()

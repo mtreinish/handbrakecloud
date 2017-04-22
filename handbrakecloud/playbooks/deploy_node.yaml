@@ -15,7 +15,7 @@
           seconds: 30
     - add_host: name={{ worker_name }} groups=workers
                 ansible_ssh_host={{ worker.server.private_v4 }}
-                ansible_user={{ remote_user }}
+                ansible_user={{ user }}
 
 - hosts: workers
   sudo: yes

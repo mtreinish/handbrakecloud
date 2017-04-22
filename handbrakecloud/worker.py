@@ -11,10 +11,13 @@
 # under the License.
 
 import datetime
+import logging
 import os
 
 from handbrakecloud import runner
 from handbrakecloud import utils
+
+LOG = logging.getLogger(__name__)
 
 
 def get_deploy_worker_playbook():
@@ -37,7 +40,7 @@ def get_delete_worker_playbook():
 
 class Worker(object):
     def __init__(self, idle_queue, active_queue, name, flavor, image,
-                 key_name, remote_user):
+                 key_name, remote_user, global_config):
         self.idle_queue = idle_queue
         self.active_list = active_queue
         self.name = name
@@ -46,36 +49,45 @@ class Worker(object):
         self.key_name = key_name
         self.remote_user = remote_user
         self.start_time = None
+        self.global_config = global_config
 
     def deploy_worker(self):
         extra_vars = {
-            'name': self.name,
+            'worker_name': self.name,
             'flavor_id': self.flavor,
             'image': self.image,
             'key_name': self.key_name,
-            'remote_user': self.remote_user,
+            'user': self.remote_user,
         }
-        runner.run_playbook(get_deploy_worker_playbook(),
-                            extra_vars=extra_vars)
+        runner.run_playbook_subprocess(get_deploy_worker_playbook(),
+                                       extra_vars=extra_vars)
         self.start_time = datetime.datetime.utcnow()
 
     def run_handbrake(self, job, worker_lock):
         worker_lock.acquire()
+        LOG.debug("Worker: %s acquired active_list semaphore in "
+                  "run_handbrake() for marking itself active" % self.name)
         if self.name in self.active_list:
             print('something went horrible wrong')
             exit(100)
-        self._worker_list[self.name] = self
+        self.active_list[self.name] = self
         worker_lock.release()
+        LOG.debug("Worker %s released semaphore active_list in "
+                  "run_handbrake() after marking itself active" % self.name)
         command = utils.generate_command(job, self.global_config)
         extra_vars = {
             'command': command,
             'server': self.name,
         }
-        runner.run_playbook(get_run_handbrake_playbook(),
-                            extra_vars=extra_vars)
+        runner.run_playbook_subprocess(get_run_handbrake_playbook(),
+                                       extra_vars=extra_vars)
         worker_lock.acquire()
+        LOG.debug("Worker: %s acquired active_list semaphore in "
+                  "run_handbrake() to mark itself as idle" % self.name)
         self.idle_queue.put(self.active_list[self.name].pop())
         worker_lock.release()
+        LOG.debug("Worker: %s released active_list semaphore in "
+                  "run_handbrake() after marking itself as idle" % self.name)
         self.start_time = datetime.datetime.utcnow()
 
     def get_idle_time(self):
@@ -87,5 +99,5 @@ class Worker(object):
         extra_vars = {
             'server': self.name,
         }
-        runner.run_playbook(playbook=get_delete_worker_playbook(),
-                            extra_vars=extra_vars)
+        runner.run_playbook_subprocess(playbook=get_delete_worker_playbook(),
+                                       extra_vars=extra_vars)

@@ -79,7 +79,8 @@ def get_profile_args(global_profile, local_profile):
     return args
 
 
-def generate_command(job, global_config):
+def generate_command(jobs, global_config):
+    job = jobs[0]
     input_file = job['source']
     output_file = job['output']
     command = ['HandBrakeCLI', '-i', input_file, '-o', output_file]

@@ -20,12 +20,14 @@ def get_profile_args(global_profile, local_profile):
         if 'encoder' in global_profile['audio']:
             a_encoder = global_profile['audio']['encoder']
         if 'tracks' in global_profile['audio']:
-            a_tracks = ','.join(global_profile['audio']['tracks'])
+            a_tracks = ','.join(
+                [str(x) for x in global_profile['audio']['tracks']])
     if 'audio' in local_profile:
         if 'encoder' in local_profile['audio']:
             a_encoder = local_profile['audio']['encoder']
         if 'tracks' in local_profile['audio']:
-            a_tracks = ','.join(local_profile['audio']['tracks'])
+            a_tracks = ','.join(
+                [str(x) for x in local_profile['audio']['tracks']])
     if a_encoder:
         args.extend(['-E', a_encoder])
     if a_tracks:
@@ -51,17 +53,19 @@ def get_profile_args(global_profile, local_profile):
     if v_encoder:
         args.extend(['-e', v_encoder])
     if v_quality:
-        args.extend(['-q', v_quality])
+        args.extend(['-q', str(v_quality)])
     if v_encoder_preset:
         args.extend(['--encoder-tune', v_encoder_preset])
     # Subtitle Settings
     s_tracks = None
     if 'subtitle' in global_profile:
         if 'tracks' in global_profile['subtitle']:
-            s_tracks = ','.join(global_profile['subtitle']['tracks'])
+            s_tracks = ','.join(
+                [str(x) for x in global_profile['subtitle']['tracks']])
     if 'subtitle' in local_profile:
         if 'tracks' in local_profile['subtitle']:
-            s_tracks = ','.join(local_profile['subtitle']['tracks'])
+            s_tracks = ','.join(
+                [str(x) for x in local_profile['subtitle']['tracks']])
     if s_tracks:
         args.extend(['-s', s_tracks])
     # Filter Settings
@@ -90,7 +94,7 @@ def generate_command(jobs, global_config):
     else:
         command.append('--main-feature')
     if job.get('chapters'):
-        command.append('m')
+        command.append('-m')
     command.extend(get_profile_args(global_config.get('profile', {}),
                                     job.get('profile', {})))
     return ' '.join(command)

@@ -10,7 +10,7 @@ ChangeLog
 *.db
 dist
 build
-.testrepository
+.stestr
 .coverage*
 !.coveragerc
 cover/

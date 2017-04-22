@@ -10,6 +10,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import datetime
 import logging
 import os
 import sys
@@ -48,6 +49,7 @@ def deploy_new_worker(new_worker, idle_worker_queue):
         # Launch worker delete in spare thread to not block on failure
         threading.Thread(target=new_worker.delete_worker)
         return
+    LOG.info("Launched new worker %s" % worker_name)
     idle_worker_queue.put(new_worker)
 
 
@@ -90,7 +92,6 @@ def process_job(job, idle_worker_queue, active_worker_list, global_config):
         if new_worker:
             LOG.debug("Launching new worker: %s" % worker_name)
             deploy_new_worker(new_worker, idle_worker_queue)
-            LOG.info("Launched new worker %s" % worker_name)
         else:
             LOG.debug("Max number of active workers running already new jobs "
                       "are queued until a running worker is idle")
@@ -106,7 +107,11 @@ def process_job(job, idle_worker_queue, active_worker_list, global_config):
     LOG.debug("Worker %s released semaphore active_list in "
               "run_handbrake() after marking itself "
               "active" % active_worker.name)
+    start = datetime.datetime.utcnow()
     active_worker.run_handbrake(job, active_worker_lock)
+    duration = datetime.datetime.utcnow() - start
+    LOG.info('Finished transcoding job with output file %s in %s seconds'
+             % (job.get('output'), duration.total_seconds()))
 
 
 def main():

@@ -18,6 +18,7 @@ from handbrakecloud import runner
 from handbrakecloud import utils
 
 LOG = logging.getLogger(__name__)
+LOG.setLevel(logging.DEBUG)
 
 
 def get_deploy_worker_playbook():

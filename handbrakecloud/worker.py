@@ -64,16 +64,6 @@ class Worker(object):
         self.start_time = datetime.datetime.utcnow()
 
     def run_handbrake(self, job, worker_lock):
-        worker_lock.acquire()
-        LOG.debug("Worker: %s acquired active_list semaphore in "
-                  "run_handbrake() for marking itself active" % self.name)
-        if self.name in self.active_list:
-            print('something went horrible wrong')
-            exit(100)
-        self.active_list[self.name] = self
-        worker_lock.release()
-        LOG.debug("Worker %s released semaphore active_list in "
-                  "run_handbrake() after marking itself active" % self.name)
         command = utils.generate_command(job, self.global_config)
         extra_vars = {
             'command': command,

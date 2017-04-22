@@ -25,7 +25,7 @@ from handbrakecloud import schema
 from handbrakecloud import worker
 
 LOG = logging.getLogger(__name__)
-
+LOG.setLevel(logging.DEBUG)
 
 active_worker_lock = threading.Semaphore()
 
@@ -43,11 +43,8 @@ def process_job(job, idle_worker_queue, active_worker_list, global_config):
         active_worker_lock.acquire()
         LOG.debug("process_job() acquired the active_list semaphore to check "
                   "active worker counts.")
-        if max_workers == 0 or len(active_worker_list) < max_workers:
-            max_num = max_workers
-            if max_num == 0:
-                max_num = sys.maxint
-            worker_num = random.randint(0, max_num)
+        if max_workers == 0 or len(active_worker_list) <= max_workers:
+            worker_num = len(active_worker_list) + 1
             base_name = global_config.get('worker_name_prefix',
                                           'handbrakecloud-worker')
             worker_name = base_name + '-' + str(worker_num)
@@ -63,8 +60,24 @@ def process_job(job, idle_worker_queue, active_worker_list, global_config):
         LOG.debug("process_job() released the active_list semaphore after "
                   "checking the active worker counts.")
         if new_worker:
+            LOG.debug("Launching new worker: %s" % worker_name)
             deploy_new_worker(new_worker, idle_worker_queue)
+            LOG.info("Launched new worker %s" % worker_name)
+        else:
+            LOG.debug("Max number of active workers running already new jobs "
+                      "are queued until a running worker is idle")
     active_worker = idle_worker_queue.get()
+    active_worker_lock.acquire()
+    LOG.debug("Worker: %s acquired active_list semaphore in "
+              "run_handbrake() for marking itself active" % active_worker.name)
+    if active_worker.name in active_worker_list:
+        LOG.error("Duplicate name %s found in active worker list, something "
+                  "went horribly wrong")
+    active_worker_list[active_worker.name] = active_worker
+    active_worker_lock.release()
+    LOG.debug("Worker %s released semaphore active_list in "
+              "run_handbrake() after marking itself "
+              "active" % active_worker.name)
     threading.Thread(target=active_worker.run_handbrake,
                      args=(job, active_worker_lock)).start()
 
@@ -84,7 +97,8 @@ def main():
         exit(1)
     if 'log_path' not in global_config:
         LOG.addHandler(logging.StreamHandler())
-    logging.basicConfig(filename=global_config.get('log_path'))
+    logging.basicConfig(filename=global_config.get('log_path'),
+                        loglevel=logging.DEBUG)
 
     max_workers = global_config.get('max_workers', 0)
     idle_worker_queue = queue.Queue(maxsize=max_workers)

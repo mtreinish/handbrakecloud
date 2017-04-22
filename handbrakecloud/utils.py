@@ -90,7 +90,7 @@ def generate_command(jobs, global_config):
     command = ['HandBrakeCLI', '-i', input_file, '-o', output_file]
     if 'title' in job:
         command.append('-t')
-        command.append(job['title'])
+        command.append(str(job['title']))
     else:
         command.append('--main-feature')
     if job.get('chapters'):

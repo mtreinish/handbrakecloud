@@ -40,7 +40,7 @@ class TestUtils(base.TestCase):
         self.assertEqual(args, result)
 
     def test_generate_command(self):
-        job = [{
+        job = {
             'profile': {
                 'audio': {
                     'tracks': [2, 5]
@@ -52,7 +52,7 @@ class TestUtils(base.TestCase):
             'source': '/tmp/input',
             'chapters': True,
             'output': '/tmp/output'
-        }]
+        }
         global_config = {
             'job_file_dir': '/tmp/jobs',
             'profile': {

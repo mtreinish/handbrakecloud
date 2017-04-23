@@ -71,6 +71,8 @@ class Worker(object):
             'worker_name': self.name,
             'user': self.remote_user,
         }
+        LOG.info("Running handbrake on %s for job with output file %s" %
+                 (self.name, job['output']))
         runner.run_playbook_subprocess(get_run_handbrake_playbook(),
                                        extra_vars=extra_vars)
         worker_lock.acquire()

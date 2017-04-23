@@ -38,19 +38,30 @@ class JobManager(threading.Thread):
             if not file_name.endswith('.yaml'):
                 LOG.warning('Non yaml file found in job dir %s' % path)
                 continue
-            else:
-                with open(path, 'r') as fd:
-                    job = yaml.load(fd.read())
-                    try:
-                        schema.job_schema(job)
-                    except voluptuous.MultipleInvalid as exc:
-                        LOG.warning("Job file %s isn't a valid job yaml file "
-                                    "because: %s" % (path, exc))
-                        continue
+
+            if not os.path.isfile(path):
+                LOG.error('The file %s disappeared!!' % path)
+                continue
+
+            try:
+                os.stat(path)
+            except Exception:
+                LOG.error('%s could not be stated successfully' % path)
+                continue
+
+            with open(path, 'r') as fd:
+                jobs = yaml.load(fd.read())
+                try:
+                    schema.job_schema(jobs)
+                except voluptuous.MultipleInvalid as exc:
+                    LOG.warning("Job file %s isn't a valid job yaml "
+                                "file because: %s" % (path, exc))
+                    continue
+                for job in jobs:
                     self.queue.put(job)
                     LOG.info("Queued up job with output file %s" %
-                             job[0]['output'])
-                    os.remove(path)
+                             job['output'])
+            os.remove(path)
 
     def run(self):
         while True:

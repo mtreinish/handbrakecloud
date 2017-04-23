@@ -54,10 +54,7 @@ def deploy_new_worker(new_worker, idle_worker_queue):
 
 
 def process_job(job, idle_worker_queue, active_worker_list, global_config):
-    global active_worker_lock
-    global worker_count_lock
-    global worker_builds
-    LOG.info("Processing job with output file %s" % job[0].get('output'))
+    LOG.info("Processing job with output file %s" % job.get('output'))
     if idle_worker_queue.qsize() == 0:
         max_workers = global_config.get('max_workers', 0)
         new_worker = None
@@ -102,7 +99,7 @@ def process_job(job, idle_worker_queue, active_worker_list, global_config):
               "run_handbrake() for marking itself active" % active_worker.name)
     if active_worker.name in active_worker_list:
         LOG.error("Duplicate name %s found in active worker list, something "
-                  "went horribly wrong")
+                  "went horribly wrong" % active_worker.name)
     active_worker_list[active_worker.name] = active_worker
     active_worker_lock.release()
     LOG.debug("Worker %s released semaphore active_list in "
@@ -112,7 +109,7 @@ def process_job(job, idle_worker_queue, active_worker_list, global_config):
     active_worker.run_handbrake(job, active_worker_lock)
     duration = datetime.datetime.utcnow() - start
     LOG.info('Finished transcoding job with output file %s in %s seconds'
-             % (job[0].get('output'), duration.total_seconds()))
+             % (job.get('output'), duration.total_seconds()))
 
 
 def main():

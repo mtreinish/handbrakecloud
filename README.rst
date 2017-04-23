@@ -90,6 +90,8 @@ handbrakecloud will operate. For example a full config file would look like::
       image_name: ubuntu
       remote_user: ubuntu
     log_path: handbrakecloud.log
+    deploy_playbook_path: /etc/handbrakecloud/deploy_worker_mycloud.yaml
+    run_playbook_path: /etc/handbrakecloud/run_handbrake_mycloud.yaml
 
 ``max_workers`` is the max number of servers handbrakecloud can create. By
 default this is set to 0 which means no maximum. ``worker_name_prefix`` is the
@@ -97,11 +99,21 @@ prefix to use in the created server names. By default this is set to
 *handbrakecloud-worker*. ``job_poll_interval`` is the interval at which the
 handbrakecloud daemon will poll the job_file_dir for new files being added. (in
 seconds) By default it is set to 10 seconds. ``log_path`` is pretty self
-explanatory and just specifies where you write the log file. The ``profile``
-section will be covered in more detail job format section below, but at a high
-level this is used to specify global handbrake settings to use by default when
-running transcoding jobs. They can be overridden on a case by case basis inside
-a local job file. The concept is to set sane defaults for you use case.
+explanatory and just specifies where you write the log file.
+
+There are 2 options, ``deploy_playbook_path`` and ``run_playbook_path`` that
+are used to specify alternative playbooks to use instead of the ones packaged
+with handbrake cloud, which are the defaults if these options aren't
+specified. The playbooks packaged with the project are very specific to my
+working environment for trascoding (including things like mouting a nfsv4 share
+that contains the files, using the private v4 ip for ssh, etc.). See the section
+below on writing custom playbooks for more details.
+
+The ``profile`` section will be covered in more detail job files section
+below, but at a high level this is used to specify global handbrake settings to
+use by default when running transcoding jobs. They can be overridden on a case
+by case basis inside a local job file. The concept is to set sane defaults for
+you use case.
 
 OpenStack Credentials and Auth Configuration
 ''''''''''''''''''''''''''''''''''''''''''''
@@ -233,3 +245,63 @@ Right now the a full profile looks like::
 
 This will likely be expanded in the future, because it provides very limited
 coverage of Handbrake's options.
+
+Writing Custom Playbooks
+------------------------
+
+The packaged Ansible playbooks for both deploying a worker node and running
+handbrake are very specific to my local cloud environment and if used outside
+of that in all likelihood they will not work. However, they can serve as general
+guide for creating your own custom playbooks for your own environment. In the
+future the packaged playbooks might be changed to be more general purpose (at
+the expense of more required configuration) but for right now the only option
+is to write your own playbooks.
+
+Deploy Node Playbook
+--------------------
+For the deploy node playbook this is likely where the most customization will
+be needed, because everyone's environment will be different. The packaged
+playbook gives an example of the basic steps you'll need to test which are:
+
+ #. Create the server
+ #. Set up the storage environment to access input and store output
+ #. Install any required software and HandBrakeCLI (HandBrakeCLI must be
+    installed)
+
+In most situations the openstack pieces in the packaged playbooks should work
+the same and can probably be reused, although the ip used for
+``ansible_ssh_host`` may need to be changed depending on the network
+configuration. The packaged playbook uses the private v4 address, but if your
+cloud provides ssh on another interface you'll need to update that field. If
+you need to create your own handbrakecloud will pass in the follow variable
+which are required for booting a server on OpenStack:
+
+ #. ``worker_name``: the server name to use
+ #. ``image``: the image name to use for booting the server
+ #. ``flavor_id``: the flavor_id to use for booting the server
+ #. ``key_name``: the ssh key to use for the server
+
+Related to that but not specifically about booting the server is the ``user``
+variable which will be the ``ansible_user`` for the host which is the username
+to use for sshing into the guest. (which is provided in the configuration file)
+
+Once you have the server booted and added to the Ansible dynamic inventory you
+can then run whatever tasks you need to setup the environment for steps #2 and
+#3. The assumption handbrakecloud makes about the worker node after running the
+playbook is that it will be able to call HandBrakeCLI on that node with any of
+the options specified in the jobs submitted. (which includes input and output
+directories)
+
+
+Run Handbrake Playbook
+----------------------
+
+The run node playbook should remain mostly unchanged. handbrakecloud will
+generate a command and pass that directly to the playbook for running, via the
+``command`` variable. The packaged playbook handles this part fine, and it
+probably shouldn't need to be changed at all. What likely will need to be
+customized for this is the host/ip information to make sure that ansible ssh's
+into the correct server. The ``worker_name`` variable will be used to pass the
+server name into the playbook. You'll need to make sure your playbook will be
+able to take that name and use it to ssh into the server, which depends on both
+your OpenStack environment as well as your local ansible configuration.

@@ -21,19 +21,25 @@ LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
 
 
-def get_deploy_worker_playbook():
+def get_deploy_worker_playbook(global_config):
+    config_path = global_config.get('deploy_playbook_path')
+    if config_path:
+        return config_path
     file_path = os.path.abspath(__file__)
     playbooks_dir = os.path.join(os.path.dirname(file_path), 'playbooks')
     return os.path.join(playbooks_dir, 'deploy_node.yaml')
 
 
-def get_run_handbrake_playbook():
+def get_run_handbrake_playbook(global_config):
+    config_path = global_config.get('run_playbook_path')
+    if config_path:
+        return config_path
     file_path = os.path.abspath(__file__)
     playbooks_dir = os.path.join(os.path.dirname(file_path), 'playbooks')
     return os.path.join(playbooks_dir, 'run_handbrake.yaml')
 
 
-def get_delete_worker_playbook():
+def get_delete_worker_playbook(global_config):
     file_path = os.path.abspath(__file__)
     playbooks_dir = os.path.join(os.path.dirname(file_path), 'playbooks')
     return os.path.join(playbooks_dir, 'delete_worker.yaml')
@@ -60,8 +66,9 @@ class Worker(object):
             'key_name': self.key_name,
             'user': self.remote_user,
         }
-        runner.run_playbook_subprocess(get_deploy_worker_playbook(),
-                                       extra_vars=extra_vars)
+        runner.run_playbook_subprocess(
+            get_deploy_worker_playbook(self.global_config),
+            extra_vars=extra_vars)
         self.start_time = datetime.datetime.utcnow()
 
     def run_handbrake(self, job, worker_lock):
@@ -73,8 +80,9 @@ class Worker(object):
         }
         LOG.info("Running handbrake on %s for job with output file %s" %
                  (self.name, job['output']))
-        runner.run_playbook_subprocess(get_run_handbrake_playbook(),
-                                       extra_vars=extra_vars)
+        runner.run_playbook_subprocess(
+            get_run_handbrake_playbook(self.global_config),
+            extra_vars=extra_vars)
         worker_lock.acquire()
         LOG.debug("Worker: %s acquired active_list semaphore in "
                   "run_handbrake() to mark itself as idle" % self.name)
@@ -93,5 +101,6 @@ class Worker(object):
         extra_vars = {
             'server': self.name,
         }
-        runner.run_playbook_subprocess(playbook=get_delete_worker_playbook(),
-                                       extra_vars=extra_vars)
+        runner.run_playbook_subprocess(
+            playbook=get_delete_worker_playbook(self.global_config),
+            extra_vars=extra_vars)

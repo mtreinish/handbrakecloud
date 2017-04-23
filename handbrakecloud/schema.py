@@ -54,4 +54,6 @@ global_config = vol.Schema({
     vol.Optional('worker_name_prefix'): str,
     vol.Optional('log_path'): vol.PathExists,
     vol.Optional('job_poll_interval'): int,
+    vol.Optional('deploy_playbook_path'): vol.PathExists,
+    vol.Optional('run_playbook_path'): vol.PathExists,
 })

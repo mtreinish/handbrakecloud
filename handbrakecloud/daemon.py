@@ -42,7 +42,8 @@ def deploy_new_worker(new_worker, idle_worker_queue):
         LOG.debug("deploy_new_worker() acquired the worker_count semaphore to "
                   "remove the failed deploy from the worker counts.")
         worker_count_lock.acquire()
-        worker_builds.pop(new_worker.name)
+        if new_worker.name in worker_builds:
+            worker_builds.pop(new_worker.name)
         worker_count_lock.release()
         LOG.debug("deploy_new_worker() released the worker_count semaphore "
                   "after remove the failed deploy from the worker counts.")
@@ -53,7 +54,8 @@ def deploy_new_worker(new_worker, idle_worker_queue):
     idle_worker_queue.put(new_worker)
 
 
-def process_job(job, idle_worker_queue, active_worker_list, global_config):
+def process_job(job, idle_worker_queue, active_worker_list, global_config,
+                job_manager):
     LOG.info("Processing job with output file %s" % job.get('output'))
     if idle_worker_queue.qsize() == 0:
         max_workers = global_config.get('max_workers', 0)
@@ -99,17 +101,29 @@ def process_job(job, idle_worker_queue, active_worker_list, global_config):
               "run_handbrake() for marking itself active" % active_worker.name)
     if active_worker.name in active_worker_list:
         LOG.error("Duplicate name %s found in active worker list, something "
-                  "went horribly wrong" % active_worker.name)
+                  "went horribly wrong. Re-enqueuing" % active_worker.name)
+        job_manager.put(job)
+        active_worker_lock.release()
+        return
     active_worker_list[active_worker.name] = active_worker
     active_worker_lock.release()
     LOG.debug("Worker %s released semaphore active_list in "
               "run_handbrake() after marking itself "
               "active" % active_worker.name)
-    start = datetime.datetime.utcnow()
-    active_worker.run_handbrake(job, active_worker_lock)
-    duration = datetime.datetime.utcnow() - start
-    LOG.info('Finished transcoding job with output file %s in %s seconds'
-             % (job.get('output'), duration.total_seconds()))
+    try:
+        start = datetime.datetime.utcnow()
+        active_worker.run_handbrake(job, active_worker_lock)
+        duration = datetime.datetime.utcnow() - start
+        LOG.info('Finished transcoding job with output file %s in %s seconds'
+                 % (job.get('output'), duration.total_seconds()))
+    except:
+        LOG.error('Job Failed re-enqueing it')
+        if global_config.get('retry_on_fail'):
+            job_manager.put(job)
+        active_worker_lock.acquire()
+        if active_worker.name in active_worker_list:
+            idle_worker_queue.put(active_worker_list.pop(active_worker.name))
+        active_worker_lock.release()
 
 
 def main():
@@ -143,7 +157,7 @@ def main():
         job = job_manager.queue.get()
         threading.Thread(target=process_job,
                          args=(job, idle_worker_queue, active_worker_list,
-                               global_config)).start()
+                               global_config, job_manager)).start()
         job_manager.queue.task_done()
 
 if __name__ == "__main__":

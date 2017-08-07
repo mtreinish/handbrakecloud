@@ -92,6 +92,7 @@ handbrakecloud will operate. For example a full config file would look like::
     log_path: handbrakecloud.log
     deploy_playbook_path: /etc/handbrakecloud/deploy_worker_mycloud.yaml
     run_playbook_path: /etc/handbrakecloud/run_handbrake_mycloud.yaml
+    retry_on_fail: True
 
 ``max_workers`` is the max number of servers handbrakecloud can create. By
 default this is set to 0 which means no maximum. ``worker_name_prefix`` is the
@@ -108,6 +109,13 @@ specified. The playbooks packaged with the project are very specific to my
 working environment for trascoding (including things like mouting a nfsv4 share
 that contains the files, using the private v4 ip for ssh, etc.). See the section
 below on writing custom playbooks for more details.
+
+The ``retry_on_fail`` parameter is used to tell handbrake cloud to retry a job
+if the execution of handbrake fails for any reason. This is useful if the cloud
+nodes are unreliable (either because of networking, or some other reason)
+because the job will just be resubmitted. However, if there is a reason why
+the transcode won't work, like corrupt source or a job misconfiguration, then
+the bad job will never be flushed and stuck in a infinite loop of retries.
 
 The ``profile`` section will be covered in more detail job files section
 below, but at a high level this is used to specify global handbrake settings to
